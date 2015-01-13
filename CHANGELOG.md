@@ -1,6 +1,13 @@
 Changelog
 =========
 
+* 1.0.0-next (@release_date@)
+
+ * added `NullRepository`
+ * removed dependency to beberlei/assert
+ * symfony/filesystem is now an optional dependency that is only needed when
+   using the FilesystemRepository
+
 * 1.0.0-beta (2015-01-12)
 
  * renamed `Selector` to `Glob` and moved it to package "webmozart/glob"
