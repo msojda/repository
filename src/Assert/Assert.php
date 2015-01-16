@@ -270,14 +270,14 @@ class Assert
     {
         self::string($path, 'The path must be a string. Got: %s');
         self::notEmpty($path, 'The path must not be empty.');
-        self::startsWith($path, '/', 'The path %2$s is not absolute.');
+        self::startsWith($path, '/', 'The path %1$s is not absolute.');
     }
 
     public static function glob($glob)
     {
         self::string($glob, 'The glob must be a string. Got: %s');
         self::notEmpty($glob, 'The glob must not be empty.');
-        self::startsWith($glob, '/', 'The glob %2$s is not absolute.');
+        self::startsWith($glob, '/', 'The glob %1$s is not absolute.');
     }
 
     public static function toString($value)
