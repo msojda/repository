@@ -21,12 +21,13 @@ use Puli\Repository\Api\ResourceNotFoundException;
 use Puli\Repository\Api\UnsupportedLanguageException;
 use Puli\Repository\Api\UnsupportedOperationException;
 use Puli\Repository\Api\UnsupportedResourceException;
-use Puli\Repository\Assert\Assert;
 use Puli\Repository\Resource\Collection\FilesystemResourceCollection;
 use Puli\Repository\Resource\DirectoryResource;
 use Puli\Repository\Resource\FileResource;
 use RecursiveIteratorIterator;
+use Symfony\Component\Filesystem\Exception\IOException;
 use Symfony\Component\Filesystem\Filesystem;
+use Webmozart\Assert\Assert;
 use Webmozart\Glob\Iterator\GlobIterator;
 use Webmozart\Glob\Iterator\RecursiveDirectoryIterator;
 use Webmozart\PathUtil\Path;
@@ -77,6 +78,11 @@ class FilesystemRepository implements EditableRepository
     private $symlink;
 
     /**
+     * @var bool
+     */
+    private $relative;
+
+    /**
      * @var Filesystem
      */
     private $filesystem;
@@ -105,17 +111,25 @@ class FilesystemRepository implements EditableRepository
     /**
      * Creates a new repository.
      *
-     * @param string $baseDir The base directory of the repository on the file
-     *                        system.
-     * @param bool   $symlink Whether to use symbolic links for added files.
+     * @param string $baseDir  The base directory of the repository on the file
+     *                         system.
+     * @param bool   $symlink  Whether to use symbolic links for added files. If
+     *                         symbolic links are not supported on the current
+     *                         system, the repository will create hard copies
+     *                         instead.
+     * @param bool   $relative Whether to create relative symbolic links. If
+     *                         relative links are not supported on the current
+     *                         system, the repository will create absolute links
+     *                         instead.
      */
-    public function __construct($baseDir = '/', $symlink = true)
+    public function __construct($baseDir = '/', $symlink = true, $relative = true)
     {
         Assert::directory($baseDir);
         Assert::boolean($symlink);
 
         $this->baseDir = rtrim(Path::canonicalize($baseDir), '/');
         $this->symlink = $symlink && self::isSymlinkSupported();
+        $this->relative = $this->symlink && $relative;
         $this->filesystem = new Filesystem();
     }
 
@@ -124,7 +138,8 @@ class FilesystemRepository implements EditableRepository
      */
     public function get($path)
     {
-        Assert::path($path);
+        Assert::stringNotEmpty($path, 'The path must be a non-empty string. Got: %s');
+        Assert::startsWith($path, '/', 'The path %s is not absolute.');
 
         $path = Path::canonicalize($path);
         $filesystemPath = $this->baseDir.$path;
@@ -191,7 +206,8 @@ class FilesystemRepository implements EditableRepository
      */
     public function add($path, $resource)
     {
-        Assert::path($path);
+        Assert::stringNotEmpty($path, 'The path must be a non-empty string. Got: %s');
+        Assert::startsWith($path, '/', 'The path %s is not absolute.');
 
         $path = Path::canonicalize($path);
 
@@ -388,7 +404,8 @@ class FilesystemRepository implements EditableRepository
 
     private function getFilesystemPath($path)
     {
-        Assert::path($path);
+        Assert::stringNotEmpty($path, 'The path must be a non-empty string. Got: %s');
+        Assert::startsWith($path, '/', 'The path %s is not absolute.');
 
         $path = Path::canonicalize($path);
         $filesystemPath = $this->baseDir.$path;
@@ -406,7 +423,8 @@ class FilesystemRepository implements EditableRepository
             throw UnsupportedLanguageException::forLanguage($language);
         }
 
-        Assert::glob($query);
+        Assert::stringNotEmpty($query, 'The glob must be a non-empty string. Got: %s');
+        Assert::startsWith($query, '/', 'The glob %s is not absolute.');
 
         $query = Path::canonicalize($query);
 
@@ -433,8 +451,24 @@ class FilesystemRepository implements EditableRepository
             return;
         }
 
-        // Replace otherwise
-        $this->filesystem->symlink($origin, $target);
+        // Try creating a relative link
+        if ($this->relative && $this->trySymlink(Path::makeRelative($origin, Path::getDirectory($target)), $target)) {
+            return;
+        }
+
+        // Try creating a absolute link
+        if ($this->trySymlink($origin, $target)) {
+            return;
+        }
+
+        // Fall back to copy
+        if (is_dir($origin)) {
+            $this->filesystem->mirror($origin, $target);
+
+            return;
+        }
+
+        $this->filesystem->copy($origin, $target);
     }
 
     private function replaceParentSymlinksByCopies($path)
@@ -456,9 +490,23 @@ class FilesystemRepository implements EditableRepository
 
     private function replaceLinkByCopy($path)
     {
-        $target = readlink($path);
+        $target = Path::makeAbsolute(readlink($path), Path::getDirectory($path));
         $this->filesystem->remove($path);
         $this->filesystem->mkdir($path);
         $this->symlinkMirror($target, $path);
+    }
+
+    private function trySymlink($origin, $target)
+    {
+        try {
+            $this->filesystem->symlink($origin, $target);
+
+            if (file_exists($target)) {
+                return true;
+            }
+        } catch (IOException $e) {
+        }
+
+        return false;
     }
 }
