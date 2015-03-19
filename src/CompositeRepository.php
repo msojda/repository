@@ -15,8 +15,8 @@ use InvalidArgumentException;
 use Puli\Repository\Api\ResourceCollection;
 use Puli\Repository\Api\ResourceNotFoundException;
 use Puli\Repository\Api\ResourceRepository;
-use Puli\Repository\Assert\Assert;
 use Puli\Repository\Resource\Collection\ArrayResourceCollection;
+use Webmozart\Assert\Assert;
 use Webmozart\PathUtil\Path;
 
 /**
@@ -97,7 +97,8 @@ class CompositeRepository implements ResourceRepository
             );
         }
 
-        Assert::path($path);
+        Assert::stringNotEmpty($path, 'The path must be a non-empty string. Got: %s');
+        Assert::startsWith($path, '/', 'The path %s is not absolute.');
 
         $path = Path::canonicalize($path);
 
@@ -120,7 +121,8 @@ class CompositeRepository implements ResourceRepository
      */
     public function unmount($path)
     {
-        Assert::path($path);
+        Assert::stringNotEmpty($path, 'The path must be a non-empty string. Got: %s');
+        Assert::startsWith($path, '/', 'The path %s is not absolute.');
 
         $path = Path::canonicalize($path);
 
@@ -224,7 +226,8 @@ class CompositeRepository implements ResourceRepository
      */
     private function splitPath($path)
     {
-        Assert::path($path);
+        Assert::stringNotEmpty($path, 'The path must be a non-empty string. Got: %s');
+        Assert::startsWith($path, '/', 'The path %s is not absolute.');
 
         $path = Path::canonicalize($path);
 
