@@ -19,6 +19,7 @@ use Puli\Repository\Api\ResourceNotFoundException;
 use Puli\Repository\Api\UnsupportedResourceException;
 use Puli\Repository\Resource\Collection\ArrayResourceCollection;
 use Puli\Repository\Resource\GenericResource;
+use Puli\Repository\Resource\LinkResource;
 use Webmozart\Assert\Assert;
 use Webmozart\Glob\Glob;
 use Webmozart\Glob\Iterator\GlobFilterIterator;
@@ -63,11 +64,16 @@ class InMemoryRepository extends AbstractRepository implements EditableRepositor
     {
         $path = $this->sanitizePath($path);
 
-        if (!isset($this->resources[$path])) {
-            throw ResourceNotFoundException::forPath($path);
+        if (isset($this->resources[$path])) {
+            return $this->resources[$path];
         }
 
-        return $this->resources[$path];
+        if ($link = $this->getLinkFromPath(Path::getDirectory($path))) {
+            $relativeTargetPath = ltrim($path, $link->getPath());
+            return $this->get(Path::join([$link->getTargetPath(), $relativeTargetPath]));
+        }
+
+        throw ResourceNotFoundException::forPath($path);
     }
 
     /**
@@ -278,6 +284,28 @@ class InMemoryRepository extends AbstractRepository implements EditableRepositor
             new ArrayIterator($this->resources),
             RegexFilterIterator::FILTER_KEY
         );
+    }
+
+    /**
+     * Returns link from requested path if any found.
+     *
+     * @param $path The path.
+     *
+     * @return LinkResource The link.
+     */
+    private function getLinkFromPath($path)
+    {
+        if ('/' == $path) {
+            return;
+        }
+
+        if (!isset($this->resources[$path])) {
+            if ($link = $this->getLinkFromPath(Path::getDirectory($path))) {
+                return $link;
+            }
+        } elseif (isset($this->resources[$path]) && $this->resources[$path] instanceof LinkResource) {
+            return $this->resources[$path];
+        }
     }
 
     /**
