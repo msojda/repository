@@ -289,7 +289,7 @@ class InMemoryRepository extends AbstractRepository implements EditableRepositor
     /**
      * Returns link from requested path if any found.
      *
-     * @param $path The path.
+     * @param string $path The path.
      *
      * @return LinkResource The link.
      */
