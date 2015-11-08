@@ -253,6 +253,11 @@ class PathMappingRepository extends AbstractPathMappingRepository implements Edi
                         return $this->resolveRelativePaths($filesystemPaths);
                     }
                 }
+
+                // Link
+                if (0 === strpos($filesystemPath, 'l:')) {
+                    $filesystemPaths[] = ltrim($filesystemPath, 'l:');
+                }
             }
         }
 
