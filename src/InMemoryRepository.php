@@ -70,7 +70,8 @@ class InMemoryRepository extends AbstractRepository implements EditableRepositor
 
         if ($link = $this->getLinkFromPath(Path::getDirectory($path))) {
             $relativeTargetPath = ltrim($path, $link->getPath());
-            return $this->get(Path::join([$link->getTargetPath(), $relativeTargetPath]));
+
+            return $this->get(Path::join(array($link->getTargetPath(), $relativeTargetPath)));
         }
 
         throw ResourceNotFoundException::forPath($path);
@@ -295,7 +296,7 @@ class InMemoryRepository extends AbstractRepository implements EditableRepositor
      */
     private function getLinkFromPath($path)
     {
-        if ('/' == $path) {
+        if ('/' === $path) {
             return;
         }
 

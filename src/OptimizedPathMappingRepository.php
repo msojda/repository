@@ -189,7 +189,7 @@ class OptimizedPathMappingRepository extends AbstractPathMappingRepository imple
         $iterator = $this->getRecursivePathChildIterator($resource->getTargetPath());
 
         foreach ($iterator as $child) {
-            $this->store->set(Path::join([$path, ltrim($child, $resource->getTargetPath())]), 'l:'.$child);
+            $this->store->set(Path::join(array($path, ltrim($child, $resource->getTargetPath()))), 'l:'.$child);
         }
     }
 
